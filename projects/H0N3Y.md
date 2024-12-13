@@ -102,9 +102,16 @@ After each run, all of the content is same between synced cloud locations.
 If user wants to sync locations outside sync hours, the commands can execute manually without affecting automatic process.
 
 Report is sent daily at last run of the day
-If change has occurred the report sent immediately.
+If change has occurred the report is sent immediately.
 
 ![alt text](../img/examples/ok.png)
+
+The report table is also hosted locally, indication with last updated datetime.
+
+![alt text](../img/examples/web_demo.png)
+
+Simple text output if no change detected
+
 ![alt text](../img/examples/no_change.png)
 
 Table displays the number of affected files at the path that the change is made, by the given action. OK columns indicates the number of successful actions, other columns are the changes that are detected. If number of successful actions doesn't match the number of detected changes there has been an error.
