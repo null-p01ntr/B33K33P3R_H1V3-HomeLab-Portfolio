@@ -1,4 +1,4 @@
-# H1V3 - Self-Hosted Homelab Server
+# H1V3 - Self-Hosted Home-Lab Server
 
 ![alt text](img/icons/b33k33p3r_64x64.png)
 
@@ -6,7 +6,7 @@
 
 I have built a self-hosted server and have been maintaining since 2022. Started as a basic VPN server and became much more as I improved my technical skills. It's an endless opportunity of hands-on experimenting with new technologies in a controlled environment and gain experience on topics that were abstract to me as project management, system administration and networking.
 
-- [H1V3 - Self-Hosted Homelab Server](#h1v3---self-hosted-homelab-server)
+- [H1V3 - Self-Hosted Home-Lab Server](#h1v3---self-hosted-home-lab-server)
 	- [Motivation and Purpose](#motivation-and-purpose)
 	- [Structures](#structures)
 		- [**Hardware \& OS**](#hardware--os)
@@ -39,7 +39,7 @@ Numerical animal/habitat domain names for devices under the home network. Become
 	Tiger -> 7163R</br>
 	Safari -> 54F4R1
 
-[Inspriation](https://www.sciencealert.com/your-ability-to-read-this-message-really-does-reveal-something-incredible-about-the-mind)
+[Inspiration](https://www.sciencealert.com/your-ability-to-read-this-message-really-does-reveal-something-incredible-about-the-mind)
 
 ## Projects
 
@@ -127,12 +127,13 @@ Numerical animal/habitat domain names for devices under the home network. Become
 [see more...](projects/Scripts.md)
 
 ## Services
-
+Other installed services for convenient access and maintaining the server  
 1. **[Heimdall](https://heimdall.site/)**: Web interface to access, monitor or maintain projects and running services.
 2. **[PiVPN](https://www.pivpn.io/)**: Secure connection to home network from outside with OpenVPN protocol.
 3. **[Pi-Hole](https://pi-hole.net)**: Monitor internet traffic, ad-blocking and maintain DHCP server.
 4. **[OliveTin](https://www.olivetin.app/)**: Web interface to execute custom scripts or trigger automated scripts.
 5. **[Motion](https://motion-project.github.io/)**: Use webcam as a security camera.
+6. **[VS Code](https://code.visualstudio.com/)**: Benefit from Remote SSH extension for easy software development, file management and Docker maintenance
 
 ## Skills Developed
 
@@ -150,5 +151,6 @@ Numerical animal/habitat domain names for devices under the home network. Become
 - **Email**: <dogac.seyhan@gmail.com>
 - **LinkedIn**: [Doğaç Seyhan](https://www.linkedin.com/in/dogac-seyhan)
 - **GitHub**: [null-p01ntr](https://github.com/null-p01ntr)
+- **X (former Twitter)**: [null_p01nter](https://x.com/null_p01nter)
 
 
