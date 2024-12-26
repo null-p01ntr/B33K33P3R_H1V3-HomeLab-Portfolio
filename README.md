@@ -45,7 +45,7 @@ Numerical animal/habitat domain names for devices under the home network. Become
 
 ### 1. **H0N3Y**
 
-[![alt text](img/icons/h0n3y_64x64.png)](/projects/H0N3Y.md)
+[![alt text](img/icons/h0n3y_64x64.png)](projects/H0N3Y.md)
 
 **Description**: Synchronization between my personal *Google Drive* and *OneDrive*</br>
 **Reasoning**: Use both Google's and Microsoft's cloud drive features on different platforms with same files.</br>
@@ -63,11 +63,11 @@ Numerical animal/habitat domain names for devices under the home network. Become
 - Create a report of changes that are made and notify via e-mail daily and if a change were made
 
 **Role**: Development of automated sync scripts, report generation, and maintaining.</br>
-[see more...](/projects/H0N3Y.md)
+[see more...](projects/H0N3Y.md)
 
 ### 2. **H1V3 M1ND**
 
-[![alt text](img/icons/h1v3-m1nd_64x64.png)](/projects/H1V3_M1ND.md)
+[![alt text](img/icons/h1v3-m1nd_64x64.png)](projects/H1V3_M1ND.md)
 
 **Description**: Smart home management platform built with [Home Assistant](https://www.home-assistant.io/) </br>
 **Reasoning**: Connect different types of smart appliances under same platforms, enable communication in between </br>
@@ -86,7 +86,7 @@ Numerical animal/habitat domain names for devices under the home network. Become
 - Notify server status
 
 **Role**: Automation and artificial sensor development on an open-source project.</br>
-[see more...](/projects/H1V3_M1ND.md)
+[see more...](projects/H1V3_M1ND.md)
 
 ### 3. **W3453L**
 
@@ -124,7 +124,7 @@ Numerical animal/habitat domain names for devices under the home network. Become
 - Remotely turn on other PCs
 
 **Role**: Shell script development and maintaining cron jobs</br>
-[see more...](/projects/Scripts.md/)
+[see more...](projects/Scripts.md)
 
 ## Services
 
