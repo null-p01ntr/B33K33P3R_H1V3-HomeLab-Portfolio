@@ -2,7 +2,7 @@
 
 ## Overview
 
-	Description
+This project is an instance of Home Assistant - Smart Home Management platform. I have implemented advanced home automation systems to enhance convenience, and energy efficiency within my home. dDeveloped custom automations and a variety of sensors to create a seamless and intelligent smart home experience.  
 
 ![icon](../img/icons/h1v3-m1nd.png)
 
@@ -43,30 +43,30 @@ If user changes room while media is playing, the media playback is transferred t
 
 ```yaml
 trigger:
-	- platform: state
-		entity_id:
-			- {{ROOM_LOCATION_SENSOR}}
+  - platform: state
+    entity_id:
+  - {{ROOM_LOCATION_SENSOR}}
 condition:
-	- condition: and
-		conditions:
-			- condition: state
-				entity_id: {{MEDIA_PLAYER_SENSOR}}
-				state: playing
+  - condition: and
+    conditions:
+      - condition: state
+        entity_id: {{MEDIA_PLAYER_SENSOR}}
+        state: playing
 action:
   - choose:
 	- conditions:
-          - condition: state
-            entity_id: {{ROOM_LOCATION_SENSOR}}
-            state: {{DESIRED ROOM}}
-        sequence:
-          - wait_for_trigger:
-              {{DEVICE AVAILABILITY}}
-            data:
-              source: {{DEVICE NAME AT NEW ROOM}}
-            target:
-              entity_id: {{SPOTIFY_MEDIA_PLAYER_SENSOR}}
-            action: media_player.select_source
-	# REPEAT FOR DESIRED ROOMS/DEVICES
+ 	 - condition: state
+    entity_id: {{ROOM_LOCATION_SENSOR}}
+    state: {{DESIRED ROOM}}
+sequence:
+  - wait_for_trigger:
+      {{DEVICE AVAILABILITY}}
+    data:
+      source: {{DEVICE NAME AT NEW ROOM}}
+    target:
+      entity_id: {{SPOTIFY_MEDIA_PLAYER_SENSOR}}
+    action: media_player.select_source
+    # REPEAT FOR DESIRED ROOMS/DEVICES
 ```
 </details>
 
@@ -88,9 +88,8 @@ trigger:
       - {{BATTERY_LEVEL_SENSOR}}
     below: {{LOWER % LIMIT}}
 action:
-	- choose:
+- choose:
     - conditions:
-
       - condition: numeric_state
         entity_id: {{BATTERY_LEVEL_SENSOR}}
         below: {{LOWER % LIMIT}}
