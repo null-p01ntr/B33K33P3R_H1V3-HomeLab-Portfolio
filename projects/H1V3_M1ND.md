@@ -50,7 +50,7 @@ condition:
   - condition: and
     conditions:
       - condition: state
-        entity_id: {{MEDIA_PLAYER_SENSOR}}
+        entity_id: {{MEDIA_PLAYER_ENTITY}}
         state: playing
 action:
   - choose:
@@ -64,12 +64,37 @@ sequence:
     data:
       source: {{DEVICE NAME AT NEW ROOM}}
     target:
-      entity_id: {{SPOTIFY_MEDIA_PLAYER_SENSOR}}
+      entity_id: {{MEDIA_PLAYER_ENTITY}}
     action: media_player.select_source
     # REPEAT FOR DESIRED ROOMS/DEVICES
 ```
 </details>
 
+### Meeting Mode - Automation
+
+When user enters a meeting, phone is set to meeting mode.
+
+<details>
+	<summary>Show YAML code</summary>
+
+```yaml
+trigger:
+  - platform: state
+    entity_id:
+      [{MICROPHONE OR CAMERA ENTITIES}]
+    to:
+      - chrome
+      - Zoom
+      - Teams
+      - {{MEETING PROGRAMS}}
+action:
+  - metadata: {}
+    data:
+      message: command_dnd
+    action: notify.{{MOBILE_DEVICE}}
+```
+
+</details>
 
 ### Charge Handler - Automation
 Notifies user for low battery devices on the network, starts charging them if connected charger available.
@@ -114,6 +139,49 @@ action:
               entity_id: {{CHARGER_DEVICE}}
 
 ```
+</details>
+
+### Phone Ringing - Automation
+
+When user's phone rings, any playing media is paused. Playback continues when the call's over.
+
+<details>
+	<summary>Show YAML code</summary>
+
+```yaml
+trigger:
+  - platform: state
+    entity_id:
+      - sensor.pl47ypu5_phone_state
+    from: idle
+    to:
+      - ringing
+      - offhook
+action:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: {{MEDIA_PLAYER_ENTITY}}
+            state: playing
+        sequence:
+          - metadata: {}
+            data: {}
+            target:
+              entity_id: {{MEDIA_PLAYER_ENTITY}}
+            action: media_player.media_pause
+          - wait_for_trigger:
+              - platform: state
+                entity_id:
+                  - {{PHONE_ENTITY}}
+                to: idle
+            continue_on_timeout: false
+          - action: media_player.media_play
+            metadata: {}
+            data: {}
+            target:
+              entity_id: {{MEDIA_PLAYER_ENTITY}}
+```
+
 </details>
 
 ### Portable Drive Location - Sensor
