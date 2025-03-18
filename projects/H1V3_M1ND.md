@@ -10,13 +10,15 @@ This project is an instance of Home Assistant - Smart Home Management platform. 
 
 
 - **Automated Device Configurations**: Modify setting of devices on the network based on other events on other devices such as:
-	- Device battery low
+	- Alert owner for low ba
   - Phone ringing
   - User entered an online meeting
   - User changed room
   - Certain media type being played (movie or music)
 - **Calendar Event Tracker**: Change device settings on the network based on calendar events, such as:
 	- Changing arm mode
+	- Run power saving routines
+	- Adjust for other users and guests.
 	- Notify user for weather info
 - **Automated Lights**: Lights at home automatically turns on or off based on:
 	- User's current room
@@ -93,7 +95,6 @@ action:
       message: command_dnd
     action: notify.{{MOBILE_DEVICE}}
 ```
-
 </details>
 
 ### Charge Handler - Automation
@@ -137,7 +138,6 @@ action:
             action: switch.turn_off
             target:
               entity_id: {{CHARGER_DEVICE}}
-
 ```
 </details>
 
@@ -152,7 +152,7 @@ When user's phone rings, any playing media is paused. Playback continues when th
 trigger:
   - platform: state
     entity_id:
-      - sensor.pl47ypu5_phone_state
+      - {{PHONE_RING_ENTITY}}
     from: idle
     to:
       - ringing
@@ -181,7 +181,102 @@ action:
             target:
               entity_id: {{MEDIA_PLAYER_ENTITY}}
 ```
+</details>
 
+### Gradually Change Brightness - Script
+
+Dim or brighten up certain smart light over time. Perfect for wake up and going to sleep.
+
+<details>
+	<summary>Show YAML code</summary>
+
+```yaml
+sequence:
+  - metadata: {}
+    data:
+      brightness_pct: 30
+      rgb_color:
+        - 255
+        - 149
+        - 0
+    target:
+      entity_id: {{LIGHT_ENTITY}}
+    action: light.turn_on
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - repeat:
+      sequence:
+        - delay:
+            hours: 0
+            minutes: 3
+            seconds: 0
+            milliseconds: 0
+        - metadata: {}
+          data:
+            brightness_step_pct: -/+2 # - FOR DIM, + FOR BRIGHTEN 
+          target:
+            entity_id: {{LIGHT_ENTITY}}
+          action: light.turn_on
+      until:
+        - condition: or
+          conditions:
+            - condition: numeric_state
+              entity_id: {{LIGHT_ENTITY}}
+              attribute: brightness
+              below: 5  # FOR DIM
+              above: 95 # FOR BRIGHTEN
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: {{LIGHT_ENTITY}}
+```
+</details>
+
+### Notify Multiple Devices - Script
+
+Easily notify desired devices with single activity. Keeps recurring notification formats organized.
+
+<details>
+	<summary>Show YAML code</summary>
+
+```yaml
+sequence:
+  - repeat:
+      sequence:
+        - action: notify.mobile_app_{{ device_attr( repeat.item , 'name') | lower }}
+          metadata: {}
+          data:
+            title: "{{ notification_title }}"
+            message: "{{ notification_message }}"
+            data: "{{ notification_data }}"
+      for_each: "{{ targets }}"
+fields:
+  targets:
+    selector:
+      device:
+        multiple: true
+    name: Targets
+    required: true
+    description: target notification devices
+  notification_message:
+    selector:
+      text: null
+    name: Notification Message
+    required: true
+  notification_data:
+    selector:
+      text: null
+    name: Notification Data
+  notification_title:
+    selector:
+      text: null
+    name: Notification Title
+alias: Notify - Targets
+```
 </details>
 
 ### Portable Drive Location - Sensor
