@@ -16,7 +16,8 @@ I have built a self-hosted server and have been maintaining since 2022. Started 
 		- [1. **H0N3Y**](#1-h0n3y)
 		- [2. **H1V3 M1ND**](#2-h1v3-m1nd)
 		- [3. **W3453L**](#3-w3453l)
-		- [4. **Custom Shell Scripts**](#4-custom-shell-scripts)
+		- [4. **Service Stats**](#4-service-stats)
+		- [5. **Custom Shell Scripts**](#5-custom-shell-scripts)
 	- [Services](#services)
 	- [Skills Developed](#skills-developed)
 	- [Contact Information](#contact-information)
@@ -107,7 +108,25 @@ Numerical animal/habitat domain names for devices under the home network. Become
 
 **Role**: Automation development on [MacroDroid](https://www.macrodroid.com/).
 
-### 4. **Custom Shell Scripts**
+### 4. **Service Stats**
+
+**Description**: A simple HTML page that reads and displays a json file that contains installed services status.</br>
+**Reasoning**: Tracking the behavior and live status of installed services for monitoring purposes. </br>
+**Technologies Used**:
+
+- HTML
+- JSON
+
+**Key Features**:
+
+- Give information about services
+- Display mounted device status
+
+**Role**
+Developing HTML page and monitoring service status</br>
+[see more...](projects/ServiceStats.md)
+
+### 5. **Custom Shell Scripts**
 
 **Description**: Series of shell scripts for maintaining the server and other services</br>
 **Reasoning**: Reduce the hassle of running same Linux commands for repetitive situations</br>

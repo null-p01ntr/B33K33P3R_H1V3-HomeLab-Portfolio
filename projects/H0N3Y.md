@@ -96,10 +96,48 @@ mkdir /home/b33k33p3r/h0n3y/logs/$new_day   #create new date directory
 rm -r /home/b33k33p3r/h0n3y/logs/$last_week #remove last week directory
 ```
 
+### Manual Usage
+
+The manual script is for running the bisync commands anytime needed, some parameters are also modified to bu used as a fix or force-run when needed.
+
+```shell
+rclone bisync $DRIVE_1:$FOLDER_1 $DRIVE_2:$FOLDER_2 -v --remove-empty-dirs --resilient --force 
+```
+
+Also flagging can be used to run for selected folders only.
+
+```shell
+run_all=true
+run_a=false
+run_b=false
+# Can be added on demand
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -a) run_a=true; run_all=false ;;
+        -b) run_b=true; run_all=false ;;
+        # Can be added on demand
+        *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+if [[ "$run_all" == true || "$run_a" == true ]]; then
+    echo "_P0LLIN4T1N6 'Category A'"
+    rclone bisync $DRIVE_1:$FOLDER_1 $DRIVE_2:$FOLDER_2 -v --remove-empty-dirs --resilient --force 
+fi
+if [[ "$run_all" == true || "$run_b" == true ]]; then
+    echo "_P0LLIN4T1N6 'Category B'"
+    rclone bisync $DRIVE_1:$FOLDER_3 $DRIVE_2:$FOLDER_4 -v --remove-empty-dirs --resilient --force 
+fi
+```
+
+With this structure the script can be run by `h0n3y manual -a` or `h0n3y manual -b` for syncing just a single drive location.
+
 ### Expected Output
 
 After each run, all of the content is same between synced cloud locations.
-If user wants to sync locations outside sync hours, the commands can execute manually without affecting automatic process.
+If user wants to sync locations outside sync hours, the manual script can be executed without affecting automatic process.
 
 Report is sent daily at last run of the day
 If change has occurred the report is sent immediately.
