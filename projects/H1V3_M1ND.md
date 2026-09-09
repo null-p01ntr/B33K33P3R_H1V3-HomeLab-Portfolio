@@ -6,6 +6,25 @@ This project is an instance of Home Assistant - Smart Home Management platform. 
 
 ![icon](../img/icons/h1v3-m1nd.png)
 
+## Index
+
+- **[Automations](#automations)**
+  - [Media Playback Room Transfer](#media-playback-room-transfer---automation)
+  - [Meeting Mode](#meeting-mode---automation)
+  - [Meeting Lighting Preset](#meeting-lighting-preset---automation)
+  - [Charge Handler](#charge-handler---automation)
+  - [Phone Ringing](#phone-ringing---automation)
+  - [Power Saving](#power-saving---automation)
+  - [Calendar Event Tracker](#calendar-event-tracker---automation)
+- **[Scripts](#scripts)**
+  - [Gradually Change Brightness](#gradually-change-brightness---script)
+  - [Notify Multiple Devices](#notify-multiple-devices---script)
+- **[Sensors](#sensors)**
+  - [Portable Drive Location](#portable-drive-location---sensor)
+  - [PC Mode](#pc-mode---sensor)
+- **[Subsystems](#subsystems)**
+  - [Robot Vacuum Cleaning Queue](#robot-vacuum-cleaning-queue---subsystem)
+
 ## Features
 
 
@@ -36,8 +55,9 @@ This project is an instance of Home Assistant - Smart Home Management platform. 
 
 Automations are developed using the YAML language by defining triggers, conditions, and actions, utilizing built-in variables known as sensors. For more complex sensors or those that depend on multiple devices, Jinja templates can be used to define custom sensors.
 
+### Automations
 
-### Media Playback Room Transfer - Automation
+#### Media Playback Room Transfer - Automation
 If user changes room while media is playing, the media playback is transferred to the devices that are available at users current room. Retries source-selection with a validation check until the new device actually reports itself as the active source, rather than assuming the first attempt worked.
 
 <details>
@@ -102,7 +122,7 @@ action:
 ```
 </details>
 
-### Meeting Mode - Automation
+#### Meeting Mode - Automation
 
 Watches microphone and webcam activity on the user's PCs. When either turns on inside a recognized meeting app during the day, and the user is home alone, each phone that isn't already silenced is switched to meeting/DND mode, and any playing music is paused.
 
@@ -168,7 +188,7 @@ action:
 ```
 </details>
 
-### Meeting Lighting Preset - Automation
+#### Meeting Lighting Preset - Automation
 
 A small companion automation, separate from Meeting Mode above: as soon as one PC's webcam turns on inside a recognized meeting app, that room's lighting switches to a plain preset scene. No home-mode or time-of-day gate — it fires any time the webcam is in use.
 
@@ -191,7 +211,7 @@ action:
 ```
 </details>
 
-### Charge Handler - Automation
+#### Charge Handler - Automation
 
 Two patterns, both keyed off a device's own battery sensors, chosen per device depending on whether it sits on a controllable smart-plug charger:
 
@@ -284,7 +304,7 @@ action:
 ```
 </details>
 
-### Phone Ringing - Automation
+#### Phone Ringing - Automation
 
 When either of the user's phones rings, every active media source pauses — music, the living-room TV/streaming stick, and any active audio session on either PC — and the robot vacuum pauses too if it's mid-clean. Everything resumes once the call ends.
 
@@ -373,7 +393,7 @@ action:
 ```
 </details>
 
-### Power Saving - Automation
+#### Power Saving - Automation
 
 After a room has been unoccupied for a while, its lights (and other switches in it) turn off automatically — but only while the user is home alone, never with guests present, so a guest's room never goes dark on them. Two related automations round this Feature out: one compares router / server / Home-Assistant boot timestamps to detect an unplanned power loss and offers a one-tap "graceful shutdown" vs. "turn off non-critical devices" choice; another watches backup-storage capacity and alerts past a threshold.
 
@@ -410,7 +430,7 @@ action:
 ```
 </details>
 
-### Calendar Event Tracker - Automation
+#### Calendar Event Tracker - Automation
 
 Five minutes before a calendar event starts, the user's phone gets a weather-and-outfit notification built from the local weather integration and the event's location. *(Note: the Features list above also describes arm-mode changes and guest-specific adjustments driven by calendar events — live, only the weather/outfit branch is currently enabled; the away/guest-description branches exist in the automation but are switched off, so that part of the Feature isn't active today.)*
 
@@ -445,7 +465,9 @@ action:
 ```
 </details>
 
-### Gradually Change Brightness - Script
+### Scripts
+
+#### Gradually Change Brightness - Script
 
 Dim or brighten up certain smart light over time. Perfect for wake up and going to sleep.
 
@@ -498,7 +520,7 @@ sequence:
 ```
 </details>
 
-### Notify Multiple Devices - Script
+#### Notify Multiple Devices - Script
 
 Easily notify desired devices with single activity. Keeps recurring notification formats organized.
 
@@ -541,7 +563,9 @@ alias: Notify - Targets
 ```
 </details>
 
-### Portable Drive Location - Sensor
+### Sensors
+
+#### Portable Drive Location - Sensor
 
 Certain portable drive's last plugged device. Can be used for backup automations.
 
@@ -567,7 +591,7 @@ Certain portable drive's last plugged device. Can be used for backup automations
 ```
 </details>
 
-### PC Mode - Sensor
+#### PC Mode - Sensor
 
 Keep track of a PCs custom use case to trigger automations, and configure arm modes. Also folds in whether the PC has gone unattended (idle with nobody logged in) and whether the current session belongs to a remote/guest login rather than the primary user.
 
@@ -609,5 +633,19 @@ Keep track of a PCs custom use case to trigger automations, and configure arm mo
 {% endif %}
 ```
 </details>
+
+### Subsystems
+
+#### Robot Vacuum Cleaning Queue - Subsystem
+
+Takes the room-cleaning order away from the vacuum's own app and puts it under this
+platform's control: a text helper holds an ordered room list, one automation drains it
+one room at a time, and several other automations feed rooms into that same queue
+instead of triggering a clean directly — home/away detection, calendar events, and
+return-from-away scheduling all funnel through it rather than each running its own
+job. A companion automation reuses the queue's own room-tracking data to notify when
+the vacuum is entering, or already in, whichever room the user is currently in.
+
+[Subsystem components: helper/script/automation →](Vacuum.md)
 
 [Other projects on H1V3](../README.md)
