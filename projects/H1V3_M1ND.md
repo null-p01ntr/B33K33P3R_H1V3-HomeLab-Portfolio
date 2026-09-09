@@ -38,7 +38,7 @@ Automations are developed using the YAML language by defining triggers, conditio
 
 
 ### Media Playback Room Transfer - Automation
-If user changes room while media is playing, the media playback is transferred to the devices that are available at users current room.
+If user changes room while media is playing, the media playback is transferred to the devices that are available at users current room. Retries source-selection with a validation check until the new device actually reports itself as the active source, rather than assuming the first attempt worked.
 
 <details>
 	<summary>Show YAML code</summary>
@@ -46,35 +46,65 @@ If user changes room while media is playing, the media playback is transferred t
 ```yaml
 trigger:
   - platform: state
-    entity_id:
-  - {{ROOM_LOCATION_SENSOR}}
+    entity_id: {{ROOM_LOCATION_SENSOR}}
+    for:
+      seconds: 5
 condition:
-  - condition: and
-    conditions:
-      - condition: state
-        entity_id: {{MEDIA_PLAYER_ENTITY}}
-        state: playing
+  - condition: state
+    entity_id: {{HOME_MODE_SENSOR}}
+    state: {{ALONE_MODE}}
 action:
   - choose:
-	- conditions:
- 	 - condition: state
-    entity_id: {{ROOM_LOCATION_SENSOR}}
-    state: {{DESIRED ROOM}}
-sequence:
-  - wait_for_trigger:
-      {{DEVICE AVAILABILITY}}
-    data:
-      source: {{DEVICE NAME AT NEW ROOM}}
+      - conditions:
+          - condition: state
+            entity_id: {{ROOM_LOCATION_SENSOR}}
+            state: {{ROOM_A}}
+        sequence:
+          - action: retry.action
+            target:
+              entity_id: {{MEDIA_PLAYER_ENTITY}}
+            data:
+              action: media_player.select_source
+              source: {{SOURCE_NAME_FOR_ROOM_A}}
+              validation: "[[ state_attr({{MEDIA_PLAYER_ENTITY}}, 'source') == source ]]"
+              retries: 10
+              state_delay: 1.1
+      - conditions:
+          - condition: state
+            entity_id: {{ROOM_LOCATION_SENSOR}}
+            state:
+              - {{ROOM_B}}
+              - {{ROOM_B_ALT_STATE}}
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: {{ROOM_B_SPEAKER_SWITCH}}
+          - action: retry.action
+            target:
+              entity_id: {{MEDIA_PLAYER_ENTITY}}
+            data:
+              action: media_player.select_source
+              source: {{SOURCE_NAME_FOR_ROOM_B}}
+              validation: "[[ state_attr({{MEDIA_PLAYER_ENTITY}}, 'source') == source ]]"
+              retries: 10
+              state_delay: 1.1
+      # REPEAT FOR DESIRED ROOMS/DEVICES
+  - delay:
+      seconds: 3
+  - action: media_player.media_play
     target:
       entity_id: {{MEDIA_PLAYER_ENTITY}}
-    action: media_player.select_source
-    # REPEAT FOR DESIRED ROOMS/DEVICES
+  - action: script.notify_targets
+    data:
+      targets: {{NOTIFY_TARGETS}}
+      notification_title: "{{APP_NAME}} Playback"
+      notification_message: "Transferred to `{{ROOM_LOCATION_SENSOR}}`, now playing from `{{MEDIA_PLAYER_ENTITY}}`"
 ```
 </details>
 
 ### Meeting Mode - Automation
 
-When user enters a meeting, phone is set to meeting mode.
+Watches microphone and webcam activity on the user's PCs. When either turns on inside a recognized meeting app during the day, and the user is home alone, each phone that isn't already silenced is switched to meeting/DND mode, and any playing music is paused.
 
 <details>
 	<summary>Show YAML code</summary>
@@ -83,67 +113,180 @@ When user enters a meeting, phone is set to meeting mode.
 trigger:
   - platform: state
     entity_id:
-      [{MICROPHONE OR CAMERA ENTITIES}]
-    to:
-      - chrome
-      - Zoom
-      - Teams
-      - {{MEETING PROGRAMS}}
+      - {{PC1_MIC_PROCESS_SENSOR}}
+      - {{PC1_CAM_PROCESS_SENSOR}}
+    for:
+      seconds: 30
+  - platform: state
+    entity_id:
+      - {{PC2_MIC_PROCESS_SENSOR}}
+      - {{PC2_CAM_PROCESS_SENSOR}}
+    for:
+      seconds: 30
+condition:
+  - condition: sun
+    after: sunrise
+    before: sunset
+  - condition: state
+    entity_id: {{HOME_MODE_SENSOR}}
+    state: {{ALONE_MODE}}
+  - condition: template
+    value_template: >
+      {% set meet_apps = ['{{MEETING_APP_1}}', '{{MEETING_APP_2}}', '{{MEETING_APP_3}}'] %}
+      {% set mic_hits = meet_apps | select('in', states('{{PC_MIC_PROCESS_SENSOR}}')) | list | count %}
+      {% set cam_hits = meet_apps | select('in', states('{{PC_CAM_PROCESS_SENSOR}}')) | list | count %}
+      {{ mic_hits + cam_hits > 0 }}
 action:
-  - metadata: {}
-    data:
-      message: command_dnd
-    action: notify.{{MOBILE_DEVICE}}
+  - if:
+      - condition: state
+        entity_id: {{MUSIC_PLAYER_ENTITY}}
+        state: playing
+    then:
+      - action: media_player.media_pause
+        target:
+          entity_id: {{MUSIC_PLAYER_ENTITY}}
+  - if:
+      - condition: state
+        entity_id: {{PHONE_1_DND_SENSOR}}
+        state: "off"
+    then:
+      - action: script.{{DEVICE_ORDER_SCRIPT}}
+        data:
+          order: Meeting
+          targets:
+            - {{PHONE_1_DEVICE_ID}}
+  - if:
+      - condition: state
+        entity_id: {{PHONE_2_DND_SENSOR}}
+        state: "off"
+    then:
+      - action: script.{{DEVICE_ORDER_SCRIPT}}
+        data:
+          order: Meeting
+          targets:
+            - {{PHONE_2_DEVICE_ID}}
 ```
 </details>
 
-### Charge Handler - Automation
-Notifies user for low battery devices on the network, starts charging them if connected charger available.
+### Meeting Lighting Preset - Automation
+
+A small companion automation, separate from Meeting Mode above: as soon as one PC's webcam turns on inside a recognized meeting app, that room's lighting switches to a plain preset scene. No home-mode or time-of-day gate — it fires any time the webcam is in use.
 
 <details>
 	<summary>Show YAML code</summary>
 
 ```yaml
 trigger:
-  - platform: numeric_state
-    entity_id:
-      - {{BATTERY_LEVEL_SENSOR}}
-    above: {{UPPER % LIMIT}}
-  - platform: numeric_state
-    entity_id:
-      - {{BATTERY_LEVEL_SENSOR}}
-    below: {{LOWER % LIMIT}}
+  - platform: state
+    entity_id: {{PC_CAM_PROCESS_SENSOR}}
+    to:
+      - {{MEETING_APP_1}}
+      - {{MEETING_APP_2}}
+    for:
+      seconds: 30
 action:
-- choose:
-    - conditions:
-      - condition: numeric_state
-        entity_id: {{BATTERY_LEVEL_SENSOR}}
-        below: {{LOWER % LIMIT}}
-      sequence:
-        - metadata: {}
-          data: {}
-          action: switch.turn_on
-          target:
-            entity_id: {{CHARGER_DEVICE}}
-        action: {{NOTIFICATION_SENSOR}}
-        - data: { {{NOTIFICATION DETAILS}} }
+  - action: scene.turn_on
+    target:
+      entity_id: {{ROOM_NORMAL_LIGHTING_SCENE}}
+```
+</details>
 
+### Charge Handler - Automation
+
+Two patterns, both keyed off a device's own battery sensors, chosen per device depending on whether it sits on a controllable smart-plug charger:
+
+- **Alert-only** (no controllable charger, e.g. a laptop): a single low-battery threshold sends a notification. Nothing is switched.
+- **Charger-controlled** (on a smart plug): four triggers — low, critical, "done", and battery-reports-full — drive a discharge-aware loop that keeps nudging the plug on, a distinct notification when nobody is home to actually plug it in, and turns the charger off once full.
+
+<details>
+	<summary>Show YAML code — alert-only pattern</summary>
+
+```yaml
+trigger:
+  - platform: numeric_state
+    entity_id: {{BATTERY_LEVEL_SENSOR}}
+    below: {{LOW_BATTERY_PCT}}
+action:
+  - action: script.{{NOTIFY_CHARGE_ALERT_SCRIPT}}
+    data:
+      targets: {{NOTIFY_TARGETS}}
+      low_battery_device: {{DEVICE_ID}}
+```
+</details>
+
+<details>
+	<summary>Show YAML code — charger-controlled pattern</summary>
+
+```yaml
+trigger:
+  - platform: numeric_state
+    entity_id: {{BATTERY_LEVEL_SENSOR}}
+    above: {{FULL_BATTERY_PCT}}
+    id: done_charge
+  - platform: numeric_state
+    entity_id: {{BATTERY_LEVEL_SENSOR}}
+    below: {{LOW_BATTERY_PCT}}
+    id: need_charge
+  - platform: numeric_state
+    entity_id: {{BATTERY_LEVEL_SENSOR}}
+    below: {{CRITICAL_BATTERY_PCT}}
+    id: critical_charge
+  - platform: state
+    entity_id: {{BATTERY_STATE_SENSOR}}
+    to: full
+    id: full_charge
+action:
+  - choose:
       - conditions:
-        - condition: numeric_state
-              entity_id: {{BATTERY_LEVEL_SENSOR}}
-              above: {{UPPER % LIMIT}}
+          - condition: trigger
+            id: [critical_charge, need_charge]
         sequence:
-          - metadata: {}
-            data: {}
-            action: switch.turn_off
+          - if:
+              - condition: not
+                conditions:
+                  - condition: state
+                    entity_id: {{HOME_MODE_SENSOR}}
+                    state: {{EMPTY_MODE}}
+            then:
+              # nudge the smart plug on until the device actually starts drawing power
+              - repeat:
+                  sequence:
+                    - action: switch.turn_on
+                      target:
+                        entity_id: {{CHARGE_SOCKET_SWITCH}}
+                    - delay:
+                        seconds: 2
+                  while:
+                    - condition: state
+                      entity_id: {{BATTERY_STATE_SENSOR}}
+                      state: discharging
+              - action: script.{{NOTIFY_CHARGE_HANDLER_SCRIPT}}
+                data:
+                  targets: {{NOTIFY_TARGETS}}
+                  low_battery_device: {{DEVICE_ID}}
+                  charger_status: "{{ states('{{CHARGE_SOCKET_SWITCH}}') }}"
+                  battery_status: "{{ states('{{BATTERY_STATE_SENSOR}}') }}"
+            else:
+              # nobody home to plug it in -- say so, don't pretend it's charging
+              - action: script.{{NOTIFY_CHARGE_HANDLER_SCRIPT}}
+                data:
+                  targets: {{NOTIFY_TARGETS}}
+                  low_battery_device: {{DEVICE_ID}}
+                  charger_status: "WILL NOT CHARGE"
+                  battery_status: "HOME EMPTY"
+      - conditions:
+          - condition: trigger
+            id: [done_charge, full_charge]
+        sequence:
+          - action: switch.turn_off
             target:
-              entity_id: {{CHARGER_DEVICE}}
+              entity_id: {{CHARGE_SOCKET_SWITCH}}
 ```
 </details>
 
 ### Phone Ringing - Automation
 
-When user's phone rings, any playing media is paused. Playback continues when the call's over.
+When either of the user's phones rings, every active media source pauses — music, the living-room TV/streaming stick, and any active audio session on either PC — and the robot vacuum pauses too if it's mid-clean. Everything resumes once the call ends.
 
 <details>
 	<summary>Show YAML code</summary>
@@ -151,35 +294,154 @@ When user's phone rings, any playing media is paused. Playback continues when th
 ```yaml
 trigger:
   - platform: state
-    entity_id:
-      - {{PHONE_RING_ENTITY}}
-    from: idle
+    entity_id: {{PHONE_1_STATE_SENSOR}}
     to:
       - ringing
       - offhook
+    id: phone_1_rang
+  - platform: state
+    entity_id: {{PHONE_2_STATE_SENSOR}}
+    to:
+      - ringing
+      - offhook
+    id: phone_2_rang
+  # REPEAT PER PHONE ON THE NETWORK
+condition:
+  - condition: state
+    entity_id: {{HOME_MODE_SENSOR}}
+    state: {{ALONE_MODE}}
 action:
+  - if:
+      - condition: state
+        entity_id: {{VACUUM_ENTITY}}
+        state:
+          - cleaning
+          - returning
+    then:
+      - action: vacuum.pause
+        target:
+          entity_id: {{VACUUM_ENTITY}}
+  - if:
+      - condition: state
+        entity_id: {{TV_STREAMING_STICK_PLAYER}}
+        state: "on"
+    then:
+      - action: media_player.media_pause
+        target:
+          entity_id: {{TV_STREAMING_STICK_PLAYER}}
+    else:
+      - action: media_player.media_pause
+        target:
+          entity_id: {{TV_PLAYER}}
+  - if:
+      - condition: state
+        entity_id: {{MUSIC_PLAYER_ENTITY}}
+        state: playing
+    then:
+      - action: media_player.media_pause
+        target:
+          entity_id: {{MUSIC_PLAYER_ENTITY}}
+  # REPEAT pause/resume for each PC's active audio session, keyed off its own
+  # "what's making sound right now" sensor
   - choose:
       - conditions:
-          - condition: state
-            entity_id: {{MEDIA_PLAYER_ENTITY}}
-            state: playing
+          - condition: trigger
+            id: phone_1_rang
         sequence:
-          - metadata: {}
-            data: {}
-            target:
-              entity_id: {{MEDIA_PLAYER_ENTITY}}
-            action: media_player.media_pause
           - wait_for_trigger:
               - platform: state
-                entity_id:
-                  - {{PHONE_ENTITY}}
+                entity_id: {{PHONE_1_STATE_SENSOR}}
                 to: idle
+                for:
+                  seconds: 15
             continue_on_timeout: false
-          - action: media_player.media_play
-            metadata: {}
-            data: {}
-            target:
-              entity_id: {{MEDIA_PLAYER_ENTITY}}
+      - conditions:
+          - condition: trigger
+            id: phone_2_rang
+        sequence:
+          - wait_for_trigger:
+              - platform: state
+                entity_id: {{PHONE_2_STATE_SENSOR}}
+                to: idle
+                for:
+                  seconds: 15
+            continue_on_timeout: false
+  # resume whichever of vacuum / TV / music / PC audio was actually paused above
+  - action: media_player.media_play
+    target:
+      entity_id: {{MUSIC_PLAYER_ENTITY}}
+```
+</details>
+
+### Power Saving - Automation
+
+After a room has been unoccupied for a while, its lights (and other switches in it) turn off automatically — but only while the user is home alone, never with guests present, so a guest's room never goes dark on them. Two related automations round this Feature out: one compares router / server / Home-Assistant boot timestamps to detect an unplanned power loss and offers a one-tap "graceful shutdown" vs. "turn off non-critical devices" choice; another watches backup-storage capacity and alerts past a threshold.
+
+<details>
+	<summary>Show YAML code</summary>
+
+```yaml
+trigger:
+  - platform: state
+    entity_id: {{ROOM_LOCATION_SENSOR}}
+    for:
+      minutes: 30
+condition:
+  - condition: state
+    entity_id: {{HOME_MODE_SENSOR}}
+    state: {{ALONE_MODE}}
+action:
+  - if:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: {{ROOM_LOCATION_SENSOR}}
+            state:
+              - {{ROOM_A}}
+              - {{ROOM_A_ALT_STATE}}
+    then:
+      - action: light.turn_off
+        target:
+          entity_id: {{ROOM_A_LIGHT}}
+      - action: switch.turn_off
+        target:
+          area_id: {{ROOM_A_AREA}}
+  # REPEAT PER ROOM
+```
+</details>
+
+### Calendar Event Tracker - Automation
+
+Five minutes before a calendar event starts, the user's phone gets a weather-and-outfit notification built from the local weather integration and the event's location. *(Note: the Features list above also describes arm-mode changes and guest-specific adjustments driven by calendar events — live, only the weather/outfit branch is currently enabled; the away/guest-description branches exist in the automation but are switched off, so that part of the Feature isn't active today.)*
+
+<details>
+	<summary>Show YAML code</summary>
+
+```yaml
+trigger:
+  - platform: calendar
+    event: start
+    offset: "-00:05:00"
+    entity_id: {{CALENDAR_ENTITY}}
+action:
+  - variables:
+      weather_summary: >
+        {{ states('{{WEATHER_ENTITY}}') }}
+        Temp: {{ state_attr('{{WEATHER_ENTITY}}', 'temperature') }}
+        Feels like: {{ states('{{FEELS_LIKE_TEMP_SENSOR}}') }}
+        UV index: {{ states('{{UV_INDEX_SENSOR}}') }}
+        Rain: {{ states('{{RAIN_SENSOR}}') }}
+      outfit_message: >
+        {% set event_city = state_attr('{{CALENDAR_ENTITY}}', 'location').split(',')[-2] %}
+        {% if '{{HOME_CITY}}' not in event_city %}
+          Check the weather for {{ event_city }} instead of home
+        {% else %}
+          {# suggest an outfit from the feels-like temperature band #}
+        {% endif %}
+  - action: notify.{{MOBILE_DEVICE}}
+    data:
+      title: "{{EVENT_TITLE}}"
+      message: "{{ weather_summary }}\n{{ outfit_message }}"
 ```
 </details>
 
@@ -287,15 +549,18 @@ Certain portable drive's last plugged device. Can be used for backup automations
 	<summary>Show Jinja template</summary>
 
 ```python
-{% set Device1_Drives = states('{{PLUGGED DRIVE LIST AT DEVICE 1}}') %}
-{% set Device2_Drives = states('{{PLUGGED DRIVE LIST AT DEVICE 2}}') %}
-# REPEAT FOR POSSIBLE DEVICES
+{% set device1_connected = states('{{DEVICE1_DRIVE_CONNECTED_SENSOR}}') %}
+{% set device2_connected = states('{{DEVICE2_DRIVE_CONNECTED_SENSOR}}') %}
+{% set hub_mount_state = states('{{HUB_DRIVE_MOUNT_SENSOR}}') %}
+# REPEAT DEVICE#_CONNECTED FOR EACH POSSIBLE DEVICE
 
-{% if '{{DRIVE NAME}}' in Device1_Drives %}
+{% if device1_connected == '{{CONNECTED_VALUE}}' %}
   Device1
-{% elif '{{DRIVE NAME}}' in Device2_Drives %}
+{% elif device2_connected == '{{CONNECTED_VALUE}}' %}
   Device2
 # REPEAT FOR POSSIBLE DEVICES
+{% elif hub_mount_state == 'mounted' %}
+  Hub
 {% else %}
   {{ this.state }}
 {% endif %}
@@ -304,36 +569,43 @@ Certain portable drive's last plugged device. Can be used for backup automations
 
 ### PC Mode - Sensor
 
-Keep track of a PCs custom use case to trigger automations, and configure arm modes.
+Keep track of a PCs custom use case to trigger automations, and configure arm modes. Also folds in whether the PC has gone unattended (idle with nobody logged in) and whether the current session belongs to a remote/guest login rather than the primary user.
 
 <details>
 	<summary>Show Jinja template</summary>
 
 ```python
+{% set unattended = states('{{PC_UNATTENDED_FLAG}}') %}
+{% set active_pc = states('{{ACTIVE_PC_SENSOR}}') %}
 {% set user = states('{{PC_USER_SENSOR}}') %}
-{% set window = states('{{PC_ACTIVE_WINDOW_SENSOR}}')%}
+{% set window = states('{{PC_ACTIVE_WINDOW_SENSOR}}') %}
 
-{% if user == '{{GAMING USERNAME}}' %}
-  gaming
-  # ADD ELIF FOR POSSIBLE WINDOWS
-{% elif user == '{{GUEST USERNAME}}' %}
-  guest
-  # ADD ELIF FOR POSSIBLE WINDOWS
-{% elif user == '{{MAIN USERNAME}}' %}
-  {% if 'Visual Studio Code' in window %}
-    development
-  {% elif 'Studio One' in window %}
-    recording
-  {% elif 'DaVinci Resolve' in window %}
-    video_edit
-  {% elif 'company name' in window %}
-    working
-  # REPEAT FOR POSSIBLE WINDOWS
+{% if unattended == 'on' %}
+  Unattended
+{% elif active_pc == '{{PC_NAME}}' %}
+  {% if user == '{{GAMING_USERNAME}}' %}
+    gaming
+    # ADD ELIF FOR POSSIBLE WINDOWS
+  {% elif user == '{{MAIN_USERNAME}}' %}
+    {% if '{{DEV_APP_1}}' in window or '{{DEV_APP_2}}' in window %}
+      dev
+    {% elif '{{MUSIC_APP}}' in window %}
+      music_prod
+    {% elif '{{VIDEO_EDIT_APP}}' in window %}
+      video_edit
+    {% elif '{{EMPLOYER_NAME}}' in window %}
+      working
+    # ADD ELIF FOR POSSIBLE WINDOWS
+    {% else %}
+      {{ this.state }}
+    {% endif %}
+  {% elif user == '{{REMOTE_SESSION_USERNAME}}' %}
+    remote
   {% else %}
     {{ this.state }}
   {% endif %}
 {% else %}
-    {{ this.state }}
+  sleep
 {% endif %}
 ```
 </details>
